@@ -188,10 +188,10 @@ FPS = 60  # Cuadros por segundo (frames per second)
 
 # ==================== TIEMPOS DE CADA FASE ====================
 # Tiempo de lectura de la pregunta (segundos) - solo para leer, no se puede presionar
-READING_TIME_LIMIT = 15
+READING_TIME_LIMIT = 10
 
 # Tiempo limite para responder despues de ganar el buzzer (segundos)
-ANSWER_TIME_LIMIT = 10
+ANSWER_TIME_LIMIT = 15
 
 # Tiempo de pausa despues de que alguien presiona el buzzer (milisegundos)
 BUZZER_PAUSE_DURATION = 1500  # 1.5 segundos
@@ -271,7 +271,7 @@ class GamePhase(Enum):
         FINISHED: Estado de fin de juego mostrando resultados
     """
     MENU = "menu"                     # Pantalla de menu principal
-    READING = "reading"               # Fase de lectura (15 segundos, solo leer)
+    READING = "reading"               # Fase de lectura (10 segundos, solo leer)
     BUZZER = "buzzer"                 # Fase de buzzer - competir por presionar
     BUZZER_PAUSE = "buzzer_pause"     # Pausa mostrando quien presiono
     ANSWERING = "answering"           # Fase de respuesta (solo ganador, 10 seg)
@@ -418,18 +418,18 @@ class RobotRaceGame:
         self.last_answer_skipped: bool = False    # Si la ultima respuesta fue skip
         
         # ==================== TEMPORIZADORES ====================
-        # Temporizador de lectura (15 segundos)
+        # Temporizador de lectura (10 segundos)
         self.reading_time_remaining = READING_TIME_LIMIT
         self.reading_start_time = 0
         
-        # Temporizador de respuesta (10 segundos)
+        # Temporizador de respuesta (15 segundos)
         self.answer_time_remaining = ANSWER_TIME_LIMIT
         self.answer_start_time = 0
         
         # ==================== CONSTANTES DEL JUEGO ====================
         self.WINNING_POSITION = 100    # Posicion de meta (100%)
-        self.POSITION_INCREMENT = 10   # Avance por respuesta correcta
-        self.TOTAL_SEGMENTS = 10       # Numero de segmentos en la pista
+        self.POSITION_INCREMENT = 20   # Avance por respuesta correcta
+        self.TOTAL_SEGMENTS = 5       # Numero de segmentos en la pista
         
         # ==================== ANIMACION ====================
         self.animation_time = 0        # Contador de tiempo para animaciones
@@ -529,7 +529,7 @@ class RobotRaceGame:
         Raises:
             No lanza excepciones - maneja errores internamente
         """
-        excel_file = "preguntas.xlsx"
+        excel_file = "preguntasCompletasVirgilio.xlsx"
         
         # Lista de posibles ubicaciones del archivo
         possible_paths = [
