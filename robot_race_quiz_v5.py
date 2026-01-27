@@ -201,15 +201,9 @@ RESULT_PAUSE_DURATION = 2000  # 2 segundos
 
 # URLs de los logos institucionales (almacenados en Vercel Blob Storage)
 # Logo de la Facultad de Matematicas - imagen con integral y colores de bandera mexicana
-LOGO_FAC_URL = (
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/"
-    "LOGO_FAC-lSL2AO24v5K1quBvYZ24TV4NFYERqB.png"
-)
-# Logo de Ingeniotics - logotipo horizontal con robot
-LOGO_INGENIOTICS_URL = (
-    "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/"
-    "image-VrEnveppkDss97bFS8KfRy2LvF7wIr.png"
-)
+# Nombres de los archivos locales (deben estar en la misma carpeta)
+LOGO_FAC_FILE = "logofac.jpeg"
+LOGO_INGENIOTICS_FILE = "logo_ingeniotics.jpeg"
 
 # ==============================================================================
 #                         PALETA DE COLORES
@@ -452,58 +446,41 @@ class RobotRaceGame:
     
     def load_logos(self):
         """
-        Carga los logos institucionales desde URLs remotas.
-        
-        Intenta cargar los logos de:
-        - Facultad de Matematicas
-        - Ingeniotics
-        
-        Si la carga falla (sin conexion, requests no instalado, etc.),
-        los logos permanecen como None y el juego continua sin ellos.
-        
-        Returns:
-            None
-        
-        Note:
-            Requiere el modulo 'requests' instalado.
-            Los logos se redimensionan a tamanos apropiados.
+        Carga los logos institucionales desde archivos locales en la computadora.
+        Busca los archivos en la misma carpeta donde esta el script.
         """
-        if not REQUESTS_AVAILABLE:
-            print("[INFO] Modulo requests no disponible. Logos no cargados.")
-            return
+        # Obtener la ruta de la carpeta donde esta este archivo .py
+        base_path = os.path.dirname(os.path.abspath(__file__))
         
-        try:
-            # Cargar logo de Facultad de Matematicas
-            print("[INFO] Cargando logo Facultad de Matematicas...")
-            response_fac = requests.get(LOGO_FAC_URL, timeout=10)
-            if response_fac.status_code == 200:
-                # Convertir bytes a superficie de Pygame
-                image_data = io.BytesIO(response_fac.content)
-                self.logo_fac = pygame.image.load(image_data)
-                # Redimensionar manteniendo aspecto
+        # Construir las rutas completas a las imagenes
+        path_fac = os.path.join(base_path, LOGO_FAC_FILE)
+        path_ing = os.path.join(base_path, LOGO_INGENIOTICS_FILE)
+        
+        # --- CARGAR LOGO FACULTAD ---
+        if os.path.exists(path_fac):
+            try:
+                print(f"[INFO] Cargando logo Facultad desde: {path_fac}")
+                self.logo_fac = pygame.image.load(path_fac)
+                # Redimensionar manteniendo aspecto (100x100)
                 self.logo_fac = pygame.transform.scale(self.logo_fac, (100, 100))
-                print("[OK] Logo Facultad de Matematicas cargado")
-            else:
-                print(f"[ERROR] No se pudo cargar logo FAC: HTTP {response_fac.status_code}")
-        except Exception as e:
-            print(f"[ERROR] Error cargando logo FAC: {e}")
-        
-        try:
-            # Cargar logo de Ingeniotics
-            print("[INFO] Cargando logo Ingeniotics...")
-            response_ing = requests.get(LOGO_INGENIOTICS_URL, timeout=10)
-            if response_ing.status_code == 200:
-                # Convertir bytes a superficie de Pygame
-                image_data = io.BytesIO(response_ing.content)
-                self.logo_ingeniotics = pygame.image.load(image_data)
-                # Redimensionar (mas ancho porque es un logotipo horizontal)
+                print("[OK] Logo Facultad cargado correctamente")
+            except Exception as e:
+                print(f"[ERROR] No se pudo cargar la imagen {LOGO_FAC_FILE}: {e}")
+        else:
+            print(f"[AVISO] No se encontro el archivo: {LOGO_FAC_FILE}")
+            
+        # --- CARGAR LOGO INGENIOTICS ---
+        if os.path.exists(path_ing):
+            try:
+                print(f"[INFO] Cargando logo Ingeniotics desde: {path_ing}")
+                self.logo_ingeniotics = pygame.image.load(path_ing)
+                # Redimensionar (mas ancho porque es horizontal)
                 self.logo_ingeniotics = pygame.transform.scale(self.logo_ingeniotics, (150, 50))
-                print("[OK] Logo Ingeniotics cargado")
-            else:
-                print(f"[ERROR] No se pudo cargar logo Ingeniotics: HTTP {response_ing.status_code}")
-        except Exception as e:
-            print(f"[ERROR] Error cargando logo Ingeniotics: {e}")
-    
+                print("[OK] Logo Ingeniotics cargado correctamente")
+            except Exception as e:
+                print(f"[ERROR] No se pudo cargar la imagen {LOGO_INGENIOTICS_FILE}: {e}")
+        else:
+            print(f"[AVISO] No se encontro el archivo: {LOGO_INGENIOTICS_FILE}")
     # ==========================================================================
     #                     CARGA DE PREGUNTAS
     # ==========================================================================
