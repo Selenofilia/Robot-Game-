@@ -174,14 +174,16 @@ pygame.init()
 
 # Inicializar especificamente el modulo de fuentes
 pygame.font.init()
+info = pygame.display.Info()
+
 
 # ==============================================================================
 #                      CONSTANTES DE CONFIGURACION
 # ==============================================================================
 
 # Dimensiones de la ventana del juego
-SCREEN_WIDTH = 1280   # Ancho de la pantalla en pixeles
-SCREEN_HEIGHT = 720   # Alto de la pantalla en pixeles
+SCREEN_WIDTH = info.current_w  # Ancho de la pantalla en pixeles
+SCREEN_HEIGHT = info.current_h
 
 # Velocidad de actualizacion del juego
 FPS = 60  # Cuadros por segundo (frames per second)
@@ -202,8 +204,8 @@ RESULT_PAUSE_DURATION = 2000  # 2 segundos
 # URLs de los logos institucionales (almacenados en Vercel Blob Storage)
 # Logo de la Facultad de Matematicas - imagen con integral y colores de bandera mexicana
 # Nombres de los archivos locales (deben estar en la misma carpeta)
-LOGO_FAC_FILE = "logofac.jpeg"
-LOGO_INGENIOTICS_FILE = "logo_ingeniotics.jpeg"
+LOGO_FAC_FILE = "LOGO_FAC.png"
+LOGO_INGENIOTICS_FILE = "ingenio2.png"
 
 # ==============================================================================
 #                         PALETA DE COLORES
@@ -462,7 +464,7 @@ class RobotRaceGame:
                 print(f"[INFO] Cargando logo Facultad desde: {path_fac}")
                 self.logo_fac = pygame.image.load(path_fac)
                 # Redimensionar manteniendo aspecto (100x100)
-                self.logo_fac = pygame.transform.scale(self.logo_fac, (100, 100))
+                self.logo_fac = pygame.transform.scale(self.logo_fac, (150, 100))
                 print("[OK] Logo Facultad cargado correctamente")
             except Exception as e:
                 print(f"[ERROR] No se pudo cargar la imagen {LOGO_FAC_FILE}: {e}")
@@ -1986,7 +1988,7 @@ class RobotRaceGame:
                            int(math.sin(self.animation_time * 0.1) * 5))
         
         # ========== ESTADISTICAS ==========
-        stats_text = self.font_small.render(f"Preguntas respondidas: {self.questions_answered}", True, COLORS['text_gray'])
+        stats_text = self.font_small.render(f"Preguntas respondidas: {self.questions_answered}", True, COLORS['text_white'])
         stats_rect = stats_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
         self.screen.blit(stats_text, stats_rect)
         
@@ -2010,7 +2012,7 @@ class RobotRaceGame:
         p2_bg = COLORS['player2'] if self.winner == 2 else COLORS['card_hover']
         self.draw_rounded_rect(self.screen, p2_bg, score_rect_2, 12, 2, COLORS['player2'])
         
-        p2_label = self.font_small.render("Jugador 2", True, COLORS['text_gray'])
+        p2_label = self.font_small.render("Jugador 2", True, COLORS['text_white'])
         p2_label_rect = p2_label.get_rect(centerx=score_rect_2.centerx, top=score_rect_2.y + 10)
         self.screen.blit(p2_label, p2_label_rect)
         
