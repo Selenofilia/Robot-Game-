@@ -1,34 +1,37 @@
 """
 ================================================================================
-                        ROBOT RACE QUIZ - VERSION 5.0
+                        ROBOT RACE QUIZ - VERSION 6.0
                  Juego de carreras de robots con quiz educativo
                     Compatible con Makey Makey + LEGO EV3
 ================================================================================
 
 DESCRIPCION:
     Este programa implementa un juego educativo de carreras de robots donde 
-    dos jugadores compiten respondiendo preguntas. La dinamica incluye una
-    fase de lectura seguida de un "buzzer" donde el primer jugador en presionar
-    gana el derecho a responder la pregunta.
+    dos jugadores compiten respondiendo preguntas. Incluye un interludio de
+    cuenta regresiva "3, 2, 1" antes de cada pregunta, seguido de 30 segundos
+    donde ambos jugadores pueden intentar responder. El primero en responder
+    correctamente gana el punto.
 
-CARACTERISTICAS PRINCIPALES v5.0:
-    - FASE DE LECTURA (15 seg): Se muestra la pregunta y respuestas para leer
-    - SISTEMA DE BUZZER: Despues de la lectura, los jugadores compiten
-    - TIEMPO DE RESPUESTA (10 seg): El ganador del buzzer tiene tiempo limitado
-    - OPCION DE SKIP: Se puede saltar una pregunta sin penalizacion
+CARACTERISTICAS PRINCIPALES v6.0:
+    - INTERLUDIO "3, 2, 1": Cuenta regresiva animada antes de cada pregunta
+    - TIEMPO DE 30 SEGUNDOS: Ambos jugadores pueden responder durante este tiempo
+    - RESPUESTA RAPIDA: El primer jugador en responder correctamente gana
+    - RESPUESTA INCORRECTA: Si alguien responde mal, queda bloqueado esa ronda
+    - TIEMPO AGOTADO: Si nadie responde, la pregunta se invalida
     - INTERFAZ UNICA: Una sola pantalla con la pregunta centrada
-    - PREGUNTAS DESECHABLES: Al responder (bien o mal), se pasa a nueva pregunta
+    - PREGUNTAS DESECHABLES: Cada pregunta solo se usa una vez
     - Barra de progreso visual estilo pista de carreras segmentada
     - Integracion con LEGO EV3 para robots fisicos
     - Compatible con Makey Makey para controles alternativos
     - Logos institucionales (Facultad de Matematicas e Ingeniotics)
 
 FLUJO DEL JUEGO:
-    1. FASE LECTURA: Se muestra la pregunta 15 segundos (solo leer, no presionar)
-    2. FASE BUZZER: Los jugadores compiten por presionar primero
-    3. PAUSA: Se muestra quien presiono primero (1.5 segundos)
-    4. FASE RESPUESTA: El ganador tiene 10 segundos para responder o skip
-    5. RESULTADO: Se muestra si fue correcto/incorrecto y se pasa a la siguiente
+    1. INTERLUDIO: Cuenta regresiva "3, 2, 1" animada (3 segundos)
+    2. PREGUNTA: Se muestra la pregunta y respuestas (30 segundos)
+       - Ambos jugadores pueden intentar responder
+       - El primero en responder correctamente gana el punto
+       - Si alguien responde incorrectamente, queda bloqueado esa ronda
+    3. RESULTADO: Se muestra el resultado y se pasa a la siguiente pregunta
 
 REQUISITOS:
     pip install pygame pandas openpyxl requests
@@ -37,15 +40,9 @@ PARA EV3:
     pip install pybricks
 
 CONTROLES:
-    - BUZZER (solo en fase buzzer):
-        - Jugador 1: Teclas A, S o D (cualquiera activa el buzzer)
-        - Jugador 2: Teclas J, K o L (cualquiera activa el buzzer)
-    - RESPONDER (solo quien gano el buzzer):
+    - RESPONDER (durante los 30 segundos):
         - Jugador 1: A=opcion1, S=opcion2, D=opcion3
         - Jugador 2: J=opcion1, K=opcion2, L=opcion3
-    - SKIP (saltar pregunta):
-        - Jugador 1: Q
-        - Jugador 2: P
     - Menu: Teclas 1, 2, 3 para seleccionar nivel
     - ESC: Salir al menu
     - ESPACIO: Reiniciar (en pantalla de fin de juego)
@@ -189,21 +186,16 @@ SCREEN_HEIGHT = info.current_h
 FPS = 60  # Cuadros por segundo (frames per second)
 
 # ==================== TIEMPOS DE CADA FASE ====================
-# Tiempo de lectura de la pregunta (segundos) - solo para leer, no se puede presionar
-READING_TIME_LIMIT = 10
+# Duracion del interludio "3, 2, 1" (segundos por numero)
+COUNTDOWN_DURATION = 1.0  # 1 segundo por cada numero (total 3 segundos)
 
-# Tiempo limite para responder despues de ganar el buzzer (segundos)
-ANSWER_TIME_LIMIT = 15
-
-# Tiempo de pausa despues de que alguien presiona el buzzer (milisegundos)
-BUZZER_PAUSE_DURATION = 1500  # 1.5 segundos
+# Tiempo limite para responder la pregunta (segundos)
+QUESTION_TIME_LIMIT = 30
 
 # Tiempo de pausa despues de responder para mostrar resultado (milisegundos)
-RESULT_PAUSE_DURATION = 2000  # 2 segundos
+RESULT_PAUSE_DURATION = 2500  # 2.5 segundos
 
-# URLs de los logos institucionales (almacenados en Vercel Blob Storage)
-# Logo de la Facultad de Matematicas - imagen con integral y colores de bandera mexicana
-# Nombres de los archivos locales (deben estar en la misma carpeta)
+# Nombres de los archivos locales de logos (deben estar en la misma carpeta)
 LOGO_FAC_FILE = "LOGO_FAC.png"
 LOGO_INGENIOTICS_FILE = "ingenio2.png"
 
@@ -238,8 +230,8 @@ COLORS = {
     'accent': (250, 204, 21),         # Amarillo de acento
     'success': (34, 197, 94),         # Verde para exito/correcto
     'error': (239, 68, 68),           # Rojo para error/incorrecto
-    'buzzer': (147, 51, 234),         # Morado para fase buzzer
-    'reading': (59, 130, 246),        # Azul para fase lectura
+    'countdown': (147, 51, 234),      # Morado para cuenta regresiva
+    'question': (59, 130, 246),       # Azul para fase de pregunta
     
     # Colores de interfaz
     'border': (51, 65, 85),           # Bordes de elementos
@@ -259,18 +251,14 @@ class GamePhase(Enum):
     
     Attributes:
         MENU: Estado del menu principal donde se selecciona el nivel
-        READING: Fase de lectura donde se muestra la pregunta (15 segundos)
-        BUZZER: Fase donde los jugadores compiten para presionar primero
-        BUZZER_PAUSE: Pausa para mostrar quien presiono primero
-        ANSWERING: Fase donde el ganador del buzzer responde (10 segundos)
+        COUNTDOWN: Interludio con cuenta regresiva "3, 2, 1"
+        QUESTION: Fase donde se muestra la pregunta (30 segundos para responder)
         RESULT_PAUSE: Pausa para mostrar resultado antes de siguiente pregunta
         FINISHED: Estado de fin de juego mostrando resultados
     """
     MENU = "menu"                     # Pantalla de menu principal
-    READING = "reading"               # Fase de lectura (10 segundos, solo leer)
-    BUZZER = "buzzer"                 # Fase de buzzer - competir por presionar
-    BUZZER_PAUSE = "buzzer_pause"     # Pausa mostrando quien presiono
-    ANSWERING = "answering"           # Fase de respuesta (solo ganador, 10 seg)
+    COUNTDOWN = "countdown"           # Interludio "3, 2, 1"
+    QUESTION = "question"             # Fase de pregunta (30 seg, todos pueden responder)
     RESULT_PAUSE = "result_pause"     # Pausa mostrando resultado
     FINISHED = "finished"             # Juego terminado
 
@@ -317,6 +305,7 @@ class PlayerState:
         message (str): Mensaje a mostrar al jugador
         message_type (str): Tipo de mensaje ("info", "success", "error", "warning")
         animation_offset (float): Desplazamiento para animacion del robot
+        blocked_this_round (bool): Si el jugador esta bloqueado esta ronda (respondio mal)
     """
     position: float = 0.0                           # Posicion en pista (0-100%)
     target_position: float = 0.0                    # Posicion destino para animacion
@@ -325,6 +314,7 @@ class PlayerState:
     message: str = ""                               # Mensaje de feedback
     message_type: str = "info"                      # Tipo de mensaje
     animation_offset: float = 0.0                   # Offset para animacion flotante
+    blocked_this_round: bool = False                # Bloqueado por respuesta incorrecta
 
 
 # ==============================================================================
@@ -338,10 +328,8 @@ class RobotRaceGame:
     Esta clase maneja:
     - Inicializacion de Pygame y recursos
     - Carga de preguntas desde Excel
-    - Sistema de lectura (15 segundos para leer)
-    - Sistema de buzzer (quien presiona primero)
-    - Sistema de respuesta (10 segundos para contestar)
-    - Opcion de skip (saltar pregunta)
+    - Interludio "3, 2, 1" antes de cada pregunta
+    - Sistema de respuesta rapida (30 segundos)
     - Logica del juego (turnos, puntuacion, tiempo)
     - Renderizado de graficos
     - Manejo de eventos de entrada
@@ -350,7 +338,7 @@ class RobotRaceGame:
     Attributes:
         screen: Superficie principal de Pygame para renderizado
         clock: Reloj de Pygame para control de FPS
-        phase: Fase actual del juego (MENU, READING, BUZZER, ANSWERING, etc.)
+        phase: Fase actual del juego (MENU, COUNTDOWN, QUESTION, etc.)
         level: Nivel de dificultad actual
         player1: Estado del jugador 1
         player2: Estado del jugador 2
@@ -359,7 +347,6 @@ class RobotRaceGame:
         available_questions: Preguntas disponibles para la partida actual
         current_question: Pregunta actual
         current_options: Opciones de respuesta mezcladas
-        buzzer_winner: Jugador que gano el buzzer (1 o 2)
     """
     
     def __init__(self):
@@ -379,18 +366,19 @@ class RobotRaceGame:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         
         # Establecer titulo de la ventana
-        pygame.display.set_caption("Robot Race Quiz v5.0 - Sistema Buzzer con Lectura")
+        pygame.display.set_caption("Robot Race Quiz v6.0 - Interludio 3,2,1 + 30 segundos")
         
         # Crear reloj para controlar la velocidad del juego
         self.clock = pygame.time.Clock()
         
         # ==================== FUENTES TIPOGRAFICAS ====================
         # Diferentes tamanos de fuente para distintos elementos de UI
-        self.font_title = pygame.font.Font(None, 56)   # Titulos grandes
-        self.font_large = pygame.font.Font(None, 48)   # Subtitulos grandes
-        self.font_medium = pygame.font.Font(None, 32)  # Texto medio
-        self.font_small = pygame.font.Font(None, 24)   # Texto pequeno
-        self.font_tiny = pygame.font.Font(None, 18)    # Texto muy pequeno
+        self.font_title = pygame.font.Font(None, 56)       # Titulos grandes
+        self.font_countdown = pygame.font.Font(None, 200)  # Numeros de cuenta regresiva
+        self.font_large = pygame.font.Font(None, 48)       # Subtitulos grandes
+        self.font_medium = pygame.font.Font(None, 32)      # Texto medio
+        self.font_small = pygame.font.Font(None, 24)       # Texto pequeno
+        self.font_tiny = pygame.font.Font(None, 18)        # Texto muy pequeno
         
         # ==================== ESTADO DEL JUEGO ====================
         self.phase = GamePhase.MENU    # Comenzar en el menu
@@ -406,26 +394,23 @@ class RobotRaceGame:
         self.current_options: List[str] = []             # Opciones mezcladas
         self.questions_answered = 0                       # Contador de preguntas
         
-        # ==================== SISTEMA DE BUZZER ====================
-        self.buzzer_winner: Optional[int] = None  # Quien gano el buzzer (1 o 2)
-        self.buzzer_pause_start = 0               # Tiempo inicio de pausa buzzer
-        self.result_pause_start = 0               # Tiempo inicio de pausa resultado
+        # ==================== SISTEMA DE INTERLUDIO ====================
+        self.countdown_number = 3                  # Numero actual de cuenta regresiva
+        self.countdown_start_time = 0             # Tiempo de inicio de cuenta regresiva
+        
+        # ==================== RESULTADO DE RONDA ====================
+        self.round_winner: Optional[int] = None   # Quien gano esta ronda (1, 2 o None)
         self.last_answer_correct: Optional[bool] = None  # Si la ultima respuesta fue correcta
-        self.last_answer_skipped: bool = False    # Si la ultima respuesta fue skip
+        self.result_pause_start = 0               # Tiempo inicio de pausa resultado
         
-        # ==================== TEMPORIZADORES ====================
-        # Temporizador de lectura (10 segundos)
-        self.reading_time_remaining = READING_TIME_LIMIT
-        self.reading_start_time = 0
-        
-        # Temporizador de respuesta (15 segundos)
-        self.answer_time_remaining = ANSWER_TIME_LIMIT
-        self.answer_start_time = 0
+        # ==================== TEMPORIZADOR DE PREGUNTA ====================
+        self.question_time_remaining = QUESTION_TIME_LIMIT
+        self.question_start_time = 0
         
         # ==================== CONSTANTES DEL JUEGO ====================
         self.WINNING_POSITION = 100    # Posicion de meta (100%)
         self.POSITION_INCREMENT = 20   # Avance por respuesta correcta
-        self.TOTAL_SEGMENTS = 5       # Numero de segmentos en la pista
+        self.TOTAL_SEGMENTS = 5        # Numero de segmentos en la pista
         
         # ==================== ANIMACION ====================
         self.animation_time = 0        # Contador de tiempo para animaciones
@@ -483,6 +468,7 @@ class RobotRaceGame:
                 print(f"[ERROR] No se pudo cargar la imagen {LOGO_INGENIOTICS_FILE}: {e}")
         else:
             print(f"[AVISO] No se encontro el archivo: {LOGO_INGENIOTICS_FILE}")
+    
     # ==========================================================================
     #                     CARGA DE PREGUNTAS
     # ==========================================================================
@@ -663,27 +649,25 @@ class RobotRaceGame:
         random.shuffle(options)
         return options
     
-    def assign_next_question(self):
+    def start_countdown_for_next_question(self):
         """
-        Asigna la siguiente pregunta disponible e inicia la fase de LECTURA.
+        Inicia la cuenta regresiva "3, 2, 1" para la siguiente pregunta.
         
-        Selecciona una pregunta de la lista de preguntas disponibles,
-        mezcla las opciones y cambia a la fase de READING donde los
-        jugadores pueden leer la pregunta durante 15 segundos.
-        
-        Si no hay mas preguntas disponibles, termina el juego.
+        Resetea los estados de la ronda anterior y prepara la siguiente pregunta.
+        Si no hay mas preguntas, termina el juego.
         
         Returns:
             None
         """
-        # Resetear estados
-        self.buzzer_winner = None
+        # Resetear estados de la ronda
+        self.round_winner = None
         self.last_answer_correct = None
-        self.last_answer_skipped = False
         self.player1.last_answer = None
         self.player1.message = ""
+        self.player1.blocked_this_round = False
         self.player2.last_answer = None
         self.player2.message = ""
+        self.player2.blocked_this_round = False
         
         # Verificar si hay preguntas disponibles
         if not self.available_questions:
@@ -698,15 +682,29 @@ class RobotRaceGame:
         # Incrementar contador
         self.questions_answered += 1
         
-        # Cambiar a fase READING (lectura de 15 segundos)
-        self.phase = GamePhase.READING
-        self.reading_start_time = time.time()
-        self.reading_time_remaining = READING_TIME_LIMIT
+        # Iniciar cuenta regresiva
+        self.phase = GamePhase.COUNTDOWN
+        self.countdown_number = 3
+        self.countdown_start_time = time.time()
         
-        print(f"\n[PREGUNTA {self.questions_answered}] {self.current_question.pregunta}")
-        print(f"[INFO] Opciones: {self.current_options}")
+        print(f"\n[PREGUNTA {self.questions_answered}] Iniciando cuenta regresiva...")
+        print(f"[INFO] Pregunta: {self.current_question.pregunta}")
         print(f"[INFO] Respuesta correcta: {self.current_question.respuesta_correcta}")
-        print(f"[LECTURA] {READING_TIME_LIMIT} segundos para leer la pregunta...")
+    
+    def start_question_phase(self):
+        """
+        Inicia la fase de pregunta donde ambos jugadores pueden responder.
+        
+        Se llama despues de que termina la cuenta regresiva "3, 2, 1".
+        
+        Returns:
+            None
+        """
+        self.phase = GamePhase.QUESTION
+        self.question_start_time = time.time()
+        self.question_time_remaining = QUESTION_TIME_LIMIT
+        
+        print(f"[PREGUNTA] Ambos jugadores pueden responder! ({QUESTION_TIME_LIMIT} segundos)")
     
     # ==========================================================================
     #                     CONTROL DEL JUEGO
@@ -719,7 +717,7 @@ class RobotRaceGame:
         Realiza las siguientes acciones:
         1. Resetea los estados de ambos jugadores
         2. Obtiene y mezcla las preguntas del nivel
-        3. Asigna la primera pregunta e inicia fase READING
+        3. Inicia la cuenta regresiva para la primera pregunta
         
         Args:
             level (int): Nivel de dificultad seleccionado (1, 2 o 3)
@@ -740,83 +738,18 @@ class RobotRaceGame:
         self.available_questions = random.sample(level_questions, len(level_questions))
         
         print(f"\n[JUEGO] Iniciando nivel {level} con {len(level_questions)} preguntas")
-        print(f"[JUEGO] Flujo: Lectura ({READING_TIME_LIMIT}s) -> Buzzer -> Respuesta ({ANSWER_TIME_LIMIT}s)")
+        print(f"[JUEGO] Flujo: Cuenta regresiva (3,2,1) -> Pregunta ({QUESTION_TIME_LIMIT}s)")
         
-        # Asignar primera pregunta (esto cambia a fase READING)
-        self.assign_next_question()
-    
-    def handle_buzzer_press(self, player: int):
-        """
-        Maneja cuando un jugador presiona el buzzer.
-        
-        Solo funciona en la fase BUZZER (despues de la lectura).
-        Registra al ganador, inicia la pausa para mostrar quien presiono
-        y luego permitira que ese jugador responda.
-        
-        Args:
-            player (int): Numero del jugador que presiono (1 o 2)
-        
-        Returns:
-            None
-        """
-        # Solo procesar en fase BUZZER
-        if self.phase != GamePhase.BUZZER:
-            return
-        
-        # Registrar ganador del buzzer
-        self.buzzer_winner = player
-        
-        # Cambiar a pausa de buzzer
-        self.phase = GamePhase.BUZZER_PAUSE
-        self.buzzer_pause_start = pygame.time.get_ticks()
-        
-        # Mensaje
-        player_color = "VERDE" if player == 1 else "NARANJA"
-        print(f"[BUZZER] Jugador {player} ({player_color}) presiono primero!")
-    
-    def handle_skip(self, player: int):
-        """
-        Maneja cuando un jugador decide saltar (skip) la pregunta.
-        
-        Solo funciona en la fase ANSWERING y solo para el jugador
-        que gano el buzzer. No hay penalizacion por saltar.
-        
-        Args:
-            player (int): Numero del jugador que quiere saltar (1 o 2)
-        
-        Returns:
-            None
-        """
-        # Solo procesar en fase ANSWERING
-        if self.phase != GamePhase.ANSWERING:
-            return
-        
-        # Solo el ganador del buzzer puede saltar
-        if player != self.buzzer_winner:
-            return
-        
-        print(f"[SKIP] Jugador {player} salto la pregunta")
-        
-        # Marcar como saltada
-        self.last_answer_skipped = True
-        self.last_answer_correct = None
-        
-        # Mostrar mensaje
-        player_state = self.player1 if player == 1 else self.player2
-        player_state.message = "Pregunta saltada"
-        player_state.message_type = "warning"
-        player_state.last_answer = "skipped"
-        
-        # Cambiar a pausa de resultado
-        self.phase = GamePhase.RESULT_PAUSE
-        self.result_pause_start = pygame.time.get_ticks()
+        # Iniciar cuenta regresiva para primera pregunta
+        self.start_countdown_for_next_question()
     
     def answer_question(self, player: int, answer_index: int):
         """
-        Procesa la respuesta del jugador que gano el buzzer.
+        Procesa la respuesta de un jugador.
         
-        Solo permite responder al jugador que gano el buzzer.
-        Evalua si la respuesta es correcta y actualiza puntuacion.
+        Cualquier jugador puede responder durante los 30 segundos,
+        pero si responde incorrectamente queda bloqueado esa ronda.
+        El primero en responder correctamente gana el punto.
         
         Args:
             player (int): Numero del jugador (1 o 2)
@@ -825,13 +758,14 @@ class RobotRaceGame:
         Returns:
             None
         """
-        # Solo procesar en fase ANSWERING
-        if self.phase != GamePhase.ANSWERING:
+        # Solo procesar en fase QUESTION
+        if self.phase != GamePhase.QUESTION:
             return
         
-        # Solo el ganador del buzzer puede responder
-        if player != self.buzzer_winner:
-            print(f"[JUEGO] Jugador {player} no puede responder (no gano el buzzer)")
+        # Verificar si el jugador esta bloqueado
+        player_state = self.player1 if player == 1 else self.player2
+        if player_state.blocked_this_round:
+            print(f"[JUEGO] Jugador {player} esta bloqueado esta ronda")
             return
         
         # Verificar que haya pregunta actual
@@ -847,14 +781,12 @@ class RobotRaceGame:
         
         # Verificar si es correcta
         is_correct = selected_answer == self.current_question.respuesta_correcta
-        self.last_answer_correct = is_correct
-        self.last_answer_skipped = False
-        
-        # Obtener estado del jugador
-        player_state = self.player1 if player == 1 else self.player2
         
         if is_correct:
             # ========== RESPUESTA CORRECTA ==========
+            self.round_winner = player
+            self.last_answer_correct = True
+            
             # Actualizar posicion del robot
             player_state.target_position = min(
                 player_state.target_position + self.POSITION_INCREMENT, 
@@ -881,37 +813,51 @@ class RobotRaceGame:
                 celebrate_robot(player)
                 print(f"[JUEGO] Jugador {player} GANA!")
                 return
+            
+            # Cambiar a pausa de resultado
+            self.phase = GamePhase.RESULT_PAUSE
+            self.result_pause_start = pygame.time.get_ticks()
+            
         else:
             # ========== RESPUESTA INCORRECTA ==========
-            player_state.message = f"Incorrecto. Era: {self.current_question.respuesta_correcta}"
+            # Bloquear al jugador esta ronda
+            player_state.blocked_this_round = True
+            player_state.message = f"Incorrecto! Bloqueado esta ronda"
             player_state.message_type = "error"
             player_state.last_answer = "incorrect"
             
-            print(f"[JUEGO] Jugador {player}: INCORRECTO")
-        
-        # Cambiar a pausa de resultado
-        self.phase = GamePhase.RESULT_PAUSE
-        self.result_pause_start = pygame.time.get_ticks()
+            print(f"[JUEGO] Jugador {player}: INCORRECTO - Bloqueado esta ronda")
+            
+            # Verificar si ambos jugadores estan bloqueados
+            if self.player1.blocked_this_round and self.player2.blocked_this_round:
+                # Ambos fallaron, mostrar respuesta correcta y pasar a siguiente
+                self.last_answer_correct = False
+                self.round_winner = None
+                self.phase = GamePhase.RESULT_PAUSE
+                self.result_pause_start = pygame.time.get_ticks()
+                print("[JUEGO] Ambos jugadores fallaron - Siguiente pregunta")
     
-    def handle_answer_timeout(self):
+    def handle_timeout(self):
         """
         Maneja el caso cuando se acaba el tiempo para responder.
         
-        Si el ganador del buzzer no responde en 10 segundos,
-        se marca como tiempo agotado y se pasa a la siguiente pregunta.
+        Si nadie responde en 30 segundos, la pregunta es invalidada
+        y se pasa a la siguiente.
         
         Returns:
             None
         """
-        print("[JUEGO] Tiempo agotado para responder!")
+        print("[JUEGO] Tiempo agotado - Pregunta invalidada!")
         
-        # Marcar como timeout para el ganador del buzzer
-        if self.buzzer_winner:
-            player_state = self.player1 if self.buzzer_winner == 1 else self.player2
-            player_state.message = "Tiempo agotado!"
-            player_state.message_type = "error"
-            player_state.last_answer = "timeout"
-            self.last_answer_correct = False
+        # Marcar como timeout
+        self.round_winner = None
+        self.last_answer_correct = None  # None indica timeout
+        
+        # Mensajes para ambos jugadores
+        self.player1.message = "Tiempo agotado!"
+        self.player1.message_type = "warning"
+        self.player2.message = "Tiempo agotado!"
+        self.player2.message_type = "warning"
         
         # Cambiar a pausa de resultado
         self.phase = GamePhase.RESULT_PAUSE
@@ -966,9 +912,8 @@ class RobotRaceGame:
         self.current_question = None
         self.current_options = []
         self.questions_answered = 0
-        self.buzzer_winner = None
-        self.reading_time_remaining = READING_TIME_LIMIT
-        self.answer_time_remaining = ANSWER_TIME_LIMIT
+        self.countdown_number = 3
+        self.question_time_remaining = QUESTION_TIME_LIMIT
         
         print("[JUEGO] Juego reiniciado - Volviendo al menu")
     
@@ -982,10 +927,10 @@ class RobotRaceGame:
         
         Esta funcion se llama 60 veces por segundo y maneja:
         1. Actualizacion del contador de animacion
-        2. Manejo del temporizador de lectura (15 segundos)
-        3. Transicion automatica de lectura a buzzer
-        4. Manejo de pausas (buzzer y resultado)
-        5. Actualizacion del temporizador de respuesta (10 segundos)
+        2. Manejo de la cuenta regresiva "3, 2, 1"
+        3. Transicion de cuenta regresiva a pregunta
+        4. Actualizacion del temporizador de pregunta (30 segundos)
+        5. Manejo de pausas de resultado
         6. Animacion suave de posiciones de robots
         7. Calculo de offsets para animaciones flotantes
         
@@ -995,42 +940,36 @@ class RobotRaceGame:
         # Incrementar contador de animacion
         self.animation_time += 1
         
-        # ========== MANEJAR FASE DE LECTURA ==========
-        if self.phase == GamePhase.READING:
-            elapsed = time.time() - self.reading_start_time
-            self.reading_time_remaining = max(0, READING_TIME_LIMIT - int(elapsed))
+        # ========== MANEJAR FASE DE CUENTA REGRESIVA ==========
+        if self.phase == GamePhase.COUNTDOWN:
+            elapsed = time.time() - self.countdown_start_time
             
-            # Verificar si se acabo el tiempo de lectura
-            if self.reading_time_remaining <= 0:
-                # Cambiar a fase BUZZER
-                self.phase = GamePhase.BUZZER
-                print(f"[BUZZER] Tiempo de lectura terminado! Presionen para responder!")
+            # Calcular que numero mostrar (3, 2, 1)
+            if elapsed < COUNTDOWN_DURATION:
+                self.countdown_number = 3
+            elif elapsed < COUNTDOWN_DURATION * 2:
+                self.countdown_number = 2
+            elif elapsed < COUNTDOWN_DURATION * 3:
+                self.countdown_number = 1
+            else:
+                # Termino la cuenta regresiva, iniciar fase de pregunta
+                self.start_question_phase()
         
-        # ========== MANEJAR PAUSA DE BUZZER ==========
-        if self.phase == GamePhase.BUZZER_PAUSE:
-            elapsed = pygame.time.get_ticks() - self.buzzer_pause_start
-            if elapsed >= BUZZER_PAUSE_DURATION:
-                # Termino la pausa, pasar a fase de respuesta
-                self.phase = GamePhase.ANSWERING
-                self.answer_start_time = time.time()
-                self.answer_time_remaining = ANSWER_TIME_LIMIT
-                print(f"[JUEGO] Jugador {self.buzzer_winner} puede responder ahora ({ANSWER_TIME_LIMIT}s)")
+        # ========== MANEJAR FASE DE PREGUNTA ==========
+        if self.phase == GamePhase.QUESTION:
+            elapsed = time.time() - self.question_start_time
+            self.question_time_remaining = max(0, QUESTION_TIME_LIMIT - int(elapsed))
+            
+            # Verificar si se acabo el tiempo
+            if self.question_time_remaining <= 0:
+                self.handle_timeout()
         
         # ========== MANEJAR PAUSA DE RESULTADO ==========
         if self.phase == GamePhase.RESULT_PAUSE:
             elapsed = pygame.time.get_ticks() - self.result_pause_start
             if elapsed >= RESULT_PAUSE_DURATION:
                 # Termino la pausa, siguiente pregunta
-                self.assign_next_question()
-        
-        # ========== ACTUALIZAR TEMPORIZADOR EN FASE ANSWERING ==========
-        if self.phase == GamePhase.ANSWERING:
-            elapsed = time.time() - self.answer_start_time
-            self.answer_time_remaining = max(0, ANSWER_TIME_LIMIT - int(elapsed))
-            
-            # Verificar si se acabo el tiempo
-            if self.answer_time_remaining <= 0:
-                self.handle_answer_timeout()
+                self.start_countdown_for_next_question()
         
         # ========== ANIMAR POSICIONES DE ROBOTS ==========
         for player_state in [self.player1, self.player2]:
@@ -1055,9 +994,7 @@ class RobotRaceGame:
         Maneja:
         - Evento de cierre de ventana
         - Teclas del menu (1, 2, 3 para seleccionar nivel)
-        - Teclas de buzzer (A, S, D para J1; J, K, L para J2) - SOLO en fase BUZZER
-        - Teclas de respuesta (solo para quien gano el buzzer)
-        - Teclas de skip (Q para J1, P para J2)
+        - Teclas de respuesta durante fase QUESTION
         - Tecla ESC para volver al menu
         - Tecla ESPACIO para reiniciar
         
@@ -1081,48 +1018,29 @@ class RobotRaceGame:
                     elif event.key == pygame.K_3:
                         self.start_game(3)  # Nivel dificil
                 
-                # ---------- FASE LECTURA ----------
-                # En fase de lectura NO se puede presionar buzzer
-                # Solo se lee la pregunta
+                # ---------- FASE CUENTA REGRESIVA ----------
+                # Durante la cuenta regresiva no se puede hacer nada
                 
-                # ---------- FASE BUZZER ----------
-                elif self.phase == GamePhase.BUZZER:
-                    # Jugador 1: Cualquier tecla A, S, D activa el buzzer
-                    if event.key in [pygame.K_a, pygame.K_s, pygame.K_d]:
-                        self.handle_buzzer_press(1)
-                    # Jugador 2: Cualquier tecla J, K, L activa el buzzer
-                    elif event.key in [pygame.K_j, pygame.K_k, pygame.K_l]:
-                        self.handle_buzzer_press(2)
-                
-                # ---------- FASE RESPUESTA ----------
-                elif self.phase == GamePhase.ANSWERING:
-                    # Solo el ganador del buzzer puede responder o saltar
-                    if self.buzzer_winner == 1:
-                        # Jugador 1: A, S, D para opciones
-                        if event.key == pygame.K_a:
-                            self.answer_question(1, 0)
-                        elif event.key == pygame.K_s:
-                            self.answer_question(1, 1)
-                        elif event.key == pygame.K_d:
-                            self.answer_question(1, 2)
-                        # Q para skip
-                        elif event.key == pygame.K_q:
-                            self.handle_skip(1)
-                    elif self.buzzer_winner == 2:
-                        # Jugador 2: J, K, L para opciones
-                        if event.key == pygame.K_j:
-                            self.answer_question(2, 0)
-                        elif event.key == pygame.K_k:
-                            self.answer_question(2, 1)
-                        elif event.key == pygame.K_l:
-                            self.answer_question(2, 2)
-                        # P para skip
-                        elif event.key == pygame.K_p:
-                            self.handle_skip(2)
+                # ---------- FASE PREGUNTA ----------
+                elif self.phase == GamePhase.QUESTION:
+                    # Jugador 1: A, S, D para opciones
+                    if event.key == pygame.K_a:
+                        self.answer_question(1, 0)
+                    elif event.key == pygame.K_s:
+                        self.answer_question(1, 1)
+                    elif event.key == pygame.K_d:
+                        self.answer_question(1, 2)
+                    
+                    # Jugador 2: J, K, L para opciones
+                    elif event.key == pygame.K_j:
+                        self.answer_question(2, 0)
+                    elif event.key == pygame.K_k:
+                        self.answer_question(2, 1)
+                    elif event.key == pygame.K_l:
+                        self.answer_question(2, 2)
                 
                 # ---------- ESC PARA SALIR ----------
-                if self.phase in [GamePhase.READING, GamePhase.BUZZER, GamePhase.BUZZER_PAUSE, 
-                                  GamePhase.ANSWERING, GamePhase.RESULT_PAUSE]:
+                if self.phase in [GamePhase.COUNTDOWN, GamePhase.QUESTION, GamePhase.RESULT_PAUSE]:
                     if event.key == pygame.K_ESCAPE:
                         self.reset_game()
                 
@@ -1230,7 +1148,7 @@ class RobotRaceGame:
         - Titulo del juego
         - Subtitulo descriptivo
         - Robots decorativos animados
-        - Panel de controles con sistema buzzer
+        - Panel de controles con sistema de respuesta rapida
         - Botones de seleccion de nivel con efectos hover
         - Texto de compatibilidad
         
@@ -1257,7 +1175,7 @@ class RobotRaceGame:
         
         # ========== SUBTITULO ==========
         subtitle = self.font_small.render(
-            "Lectura (15s) + Buzzer + Respuesta (10s)", 
+            "Interludio 3,2,1 + 30 segundos para responder", 
             True, COLORS['accent']
         )
         subtitle_rect = subtitle.get_rect(center=(SCREEN_WIDTH // 2, 120))
@@ -1273,24 +1191,24 @@ class RobotRaceGame:
         
         # ========== PANEL DE INSTRUCCIONES ==========
         instr_rect = pygame.Rect(SCREEN_WIDTH // 2 - 380, 160, 760, 100)
-        self.draw_rounded_rect(self.screen, COLORS['card'], instr_rect, 12, 2, COLORS['reading'])
+        self.draw_rounded_rect(self.screen, COLORS['card'], instr_rect, 12, 2, COLORS['question'])
         
         # Titulo del panel
-        flow_title = self.font_medium.render("FLUJO DEL JUEGO", True, COLORS['reading'])
+        flow_title = self.font_medium.render("FLUJO DEL JUEGO", True, COLORS['question'])
         flow_title_rect = flow_title.get_rect(center=(SCREEN_WIDTH // 2, 180))
         self.screen.blit(flow_title, flow_title_rect)
         
         # Explicacion del flujo
         flow1 = self.font_tiny.render(
-            "1. LECTURA (15s): Lee la pregunta y respuestas (no puedes presionar)", 
+            "1. INTERLUDIO: Cuenta regresiva animada 3, 2, 1...", 
             True, COLORS['text_gray']
         )
         flow2 = self.font_tiny.render(
-            "2. BUZZER: Presiona tu tecla para ganar el derecho a responder", 
+            "2. PREGUNTA: 30 segundos para responder (ambos jugadores pueden intentar)", 
             True, COLORS['text_gray']
         )
         flow3 = self.font_tiny.render(
-            "3. RESPUESTA (10s): Contesta o salta (Q/P) la pregunta", 
+            "3. El primero en responder CORRECTAMENTE gana el punto", 
             True, COLORS['text_gray']
         )
         self.screen.blit(flow1, (SCREEN_WIDTH // 2 - 360, 200))
@@ -1301,8 +1219,8 @@ class RobotRaceGame:
         ctrl_rect = pygame.Rect(SCREEN_WIDTH // 2 - 380, 270, 760, 50)
         self.draw_rounded_rect(self.screen, COLORS['card'], ctrl_rect, 8, 1, COLORS['border'])
         
-        ctrl_text1 = self.font_tiny.render("J1 (Verde): A/S/D para responder, Q para skip", True, COLORS['player1'])
-        ctrl_text2 = self.font_tiny.render("J2 (Naranja): J/K/L para responder, P para skip", True, COLORS['player2'])
+        ctrl_text1 = self.font_tiny.render("J1 (Verde): A=op1, S=op2, D=op3", True, COLORS['player1'])
+        ctrl_text2 = self.font_tiny.render("J2 (Naranja): J=op1, K=op2, L=op3", True, COLORS['player2'])
         self.screen.blit(ctrl_text1, (SCREEN_WIDTH // 2 - 360, 282))
         self.screen.blit(ctrl_text2, (SCREEN_WIDTH // 2 + 20, 282))
         
@@ -1487,7 +1405,7 @@ class RobotRaceGame:
         - Pista de carreras con progreso
         - Panel central con la pregunta
         - Opciones de respuesta centradas
-        - Estado actual de la fase (lectura/buzzer/respuesta)
+        - Estado actual de la fase
         
         Returns:
             None
@@ -1502,14 +1420,10 @@ class RobotRaceGame:
         self.draw_race_track()
         
         # ========== CONTENIDO SEGUN FASE ==========
-        if self.phase == GamePhase.READING:
-            self.draw_reading_phase()
-        elif self.phase == GamePhase.BUZZER:
-            self.draw_buzzer_phase()
-        elif self.phase == GamePhase.BUZZER_PAUSE:
-            self.draw_buzzer_pause_phase()
-        elif self.phase == GamePhase.ANSWERING:
-            self.draw_answering_phase()
+        if self.phase == GamePhase.COUNTDOWN:
+            self.draw_countdown_phase()
+        elif self.phase == GamePhase.QUESTION:
+            self.draw_question_phase()
         elif self.phase == GamePhase.RESULT_PAUSE:
             self.draw_result_phase()
         
@@ -1564,15 +1478,10 @@ class RobotRaceGame:
         footer_rect = pygame.Rect(40, SCREEN_HEIGHT - 45, SCREEN_WIDTH - 80, 35)
         self.draw_rounded_rect(self.screen, COLORS['card'], footer_rect, 8, 1, COLORS['border'])
         
-        if self.phase == GamePhase.READING:
-            text = "FASE DE LECTURA - Lee la pregunta y respuestas (no puedes presionar todavia)"
-        elif self.phase == GamePhase.BUZZER:
-            text = "BUZZER! - J1: A/S/D  |  J2: J/K/L  |  Quien presione primero responde!"
-        elif self.phase == GamePhase.ANSWERING:
-            if self.buzzer_winner == 1:
-                text = "J1 responde: A=op1, S=op2, D=op3  |  Q=SKIP (saltar)"
-            else:
-                text = "J2 responde: J=op1, K=op2, L=op3  |  P=SKIP (saltar)"
+        if self.phase == GamePhase.COUNTDOWN:
+            text = "PREPARATE - La pregunta aparecera en unos segundos..."
+        elif self.phase == GamePhase.QUESTION:
+            text = "J1: A/S/D  |  J2: J/K/L  |  El primero en responder correctamente gana!"
         else:
             text = "Esperando..."
         
@@ -1580,218 +1489,140 @@ class RobotRaceGame:
         ctrl_rect = ctrl_text.get_rect(center=footer_rect.center)
         self.screen.blit(ctrl_text, ctrl_rect)
     
-    def draw_reading_phase(self):
+    def draw_countdown_phase(self):
         """
-        Dibuja la fase de lectura donde los jugadores leen la pregunta.
+        Dibuja la fase de cuenta regresiva "3, 2, 1".
         
         Muestra:
-        - Indicador grande de "LECTURA"
-        - Temporizador de 15 segundos
-        - La pregunta y respuestas
-        - Mensaje de que no se puede presionar
+        - Numero grande animado (3, 2, 1)
+        - Efectos visuales de pulso
+        - La pregunta que viene (difuminada/preview)
         
         Returns:
             None
         """
-        # ========== INDICADOR DE FASE LECTURA ==========
-        reading_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, 230, 400, 50)
+        # ========== NUMERO DE CUENTA REGRESIVA ==========
+        # Animacion de escala/pulso
+        pulse = 1.0 + math.sin(self.animation_time * 0.3) * 0.1
         
-        self.draw_rounded_rect(self.screen, COLORS['reading'], reading_rect, 12, 3, COLORS['text_white'])
+        # Panel central para el numero
+        center_y = 400
         
-        reading_text = self.font_large.render(f"LECTURA: {self.reading_time_remaining}s", True, COLORS['text_white'])
-        reading_text_rect = reading_text.get_rect(center=reading_rect.center)
-        self.screen.blit(reading_text, reading_text_rect)
+        # Fondo circular animado
+        radius = int(100 * pulse)
+        pygame.draw.circle(self.screen, COLORS['countdown'], 
+                          (SCREEN_WIDTH // 2, center_y), radius)
+        pygame.draw.circle(self.screen, COLORS['text_white'], 
+                          (SCREEN_WIDTH // 2, center_y), radius, 4)
+        
+        # Numero
+        number_text = self.font_countdown.render(str(self.countdown_number), True, COLORS['text_white'])
+        number_rect = number_text.get_rect(center=(SCREEN_WIDTH // 2, center_y))
+        self.screen.blit(number_text, number_rect)
+        
+        # ========== MENSAJE PREPARATE ==========
+        prep_text = self.font_large.render("PREPARATE!", True, COLORS['accent'])
+        prep_rect = prep_text.get_rect(center=(SCREEN_WIDTH // 2, 270))
+        self.screen.blit(prep_text, prep_rect)
+        
+        # ========== PREVIEW DE LA PREGUNTA (difuminada) ==========
+        if self.current_question:
+            # Panel semi-transparente
+            preview_rect = pygame.Rect(100, 520, SCREEN_WIDTH - 200, 80)
+            preview_surface = pygame.Surface((preview_rect.width, preview_rect.height))
+            preview_surface.fill(COLORS['card'])
+            preview_surface.set_alpha(150)
+            self.screen.blit(preview_surface, preview_rect)
+            
+            # Texto de siguiente pregunta
+            next_label = self.font_tiny.render("SIGUIENTE PREGUNTA:", True, COLORS['text_muted'])
+            next_label_rect = next_label.get_rect(center=(SCREEN_WIDTH // 2, 545))
+            self.screen.blit(next_label, next_label_rect)
+            
+            # Preview de la pregunta
+            q_preview = self.current_question.pregunta[:60] + "..." if len(self.current_question.pregunta) > 60 else self.current_question.pregunta
+            q_text = self.font_small.render(q_preview, True, COLORS['text_gray'])
+            q_rect = q_text.get_rect(center=(SCREEN_WIDTH // 2, 575))
+            self.screen.blit(q_text, q_rect)
+    
+    def draw_question_phase(self):
+        """
+        Dibuja la fase de pregunta donde ambos jugadores pueden responder.
+        
+        Muestra:
+        - Temporizador de 30 segundos
+        - La pregunta actual
+        - Opciones de respuesta con teclas para ambos jugadores
+        - Estado de cada jugador (bloqueado o puede responder)
+        
+        Returns:
+            None
+        """
+        # ========== TEMPORIZADOR ==========
+        time_percent = self.question_time_remaining / QUESTION_TIME_LIMIT
+        is_low_time = self.question_time_remaining <= 10
+        
+        # Panel del temporizador
+        timer_panel = pygame.Rect(SCREEN_WIDTH // 2 - 150, 230, 300, 50)
+        timer_color = COLORS['error'] if is_low_time else COLORS['question']
+        self.draw_rounded_rect(self.screen, timer_color, timer_panel, 12, 3, COLORS['text_white'])
+        
+        # Texto del tiempo
+        time_str = f"TIEMPO: {self.question_time_remaining}s"
+        time_text = self.font_large.render(time_str, True, COLORS['text_white'])
+        time_rect = time_text.get_rect(center=timer_panel.center)
+        self.screen.blit(time_text, time_rect)
         
         # ========== BARRA DE TIEMPO ==========
-        time_percent = self.reading_time_remaining / READING_TIME_LIMIT
         timer_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, 290, 400, 15)
         timer_fg_width = int(400 * time_percent)
         timer_fg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, 290, timer_fg_width, 15)
         
         self.draw_rounded_rect(self.screen, COLORS['border'], timer_bg_rect, 6)
         if time_percent > 0:
-            self.draw_rounded_rect(self.screen, COLORS['reading'], timer_fg_rect, 6)
-        
-        # ========== PREGUNTA ==========
-        self.draw_question_panel(320)
-        
-        # ========== OPCIONES (mostradas pero no seleccionables) ==========
-        self.draw_answer_options_preview()
-        
-        # ========== MENSAJE ==========
-        msg_text = self.font_medium.render("Lee la pregunta y respuestas...", True, COLORS['text_gray'])
-        msg_rect = msg_text.get_rect(center=(SCREEN_WIDTH // 2, 600))
-        self.screen.blit(msg_text, msg_rect)
-        
-        msg_text2 = self.font_small.render("(No puedes presionar todavia)", True, COLORS['text_muted'])
-        msg_rect2 = msg_text2.get_rect(center=(SCREEN_WIDTH // 2, 630))
-        self.screen.blit(msg_text2, msg_rect2)
-    
-    def draw_buzzer_phase(self):
-        """
-        Dibuja la fase de buzzer donde los jugadores compiten por presionar.
-        
-        Muestra:
-        - Indicador grande de "BUZZER"
-        - La pregunta actual
-        - Instrucciones para presionar
-        
-        Returns:
-            None
-        """
-        # ========== INDICADOR DE FASE BUZZER ==========
-        buzzer_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, 230, 300, 50)
-        
-        # Animacion de parpadeo
-        alpha = 128 + int(math.sin(self.animation_time * 0.15) * 127)
-        buzzer_color = (*COLORS['buzzer'][:3],)
-        
-        self.draw_rounded_rect(self.screen, buzzer_color, buzzer_rect, 12, 3, COLORS['text_white'])
-        
-        buzzer_text = self.font_large.render("BUZZER!", True, COLORS['text_white'])
-        buzzer_text_rect = buzzer_text.get_rect(center=buzzer_rect.center)
-        self.screen.blit(buzzer_text, buzzer_text_rect)
-        
-        # ========== PREGUNTA ==========
-        self.draw_question_panel(310)
-        
-        # ========== OPCIONES (visibles) ==========
-        self.draw_answer_options_preview()
-        
-        # ========== INSTRUCCIONES ==========
-        instr_text = self.font_medium.render("Presiona tu tecla para ganar el derecho a responder!", True, COLORS['accent'])
-        instr_rect = instr_text.get_rect(center=(SCREEN_WIDTH // 2, 600))
-        self.screen.blit(instr_text, instr_rect)
-        
-        # Teclas de cada jugador
-        p1_keys = self.font_small.render("Jugador 1: A, S o D", True, COLORS['player1'])
-        p2_keys = self.font_small.render("Jugador 2: J, K o L", True, COLORS['player2'])
-        self.screen.blit(p1_keys, (SCREEN_WIDTH // 4 - 80, 630))
-        self.screen.blit(p2_keys, (3 * SCREEN_WIDTH // 4 - 80, 630))
-    
-    def draw_buzzer_pause_phase(self):
-        """
-        Dibuja la pausa despues de que alguien presiono el buzzer.
-        
-        Muestra:
-        - Quien presiono primero con animacion destacada
-        - Cuenta regresiva antes de poder responder
-        
-        Returns:
-            None
-        """
-        # ========== PREGUNTA ==========
-        self.draw_question_panel(310)
-        
-        # ========== GANADOR DEL BUZZER ==========
-        winner_color = COLORS['player1'] if self.buzzer_winner == 1 else COLORS['player2']
-        winner_name = "JUGADOR 1" if self.buzzer_winner == 1 else "JUGADOR 2"
-        
-        # Panel grande del ganador
-        winner_rect = pygame.Rect(SCREEN_WIDTH // 2 - 250, 230, 500, 70)
-        self.draw_rounded_rect(self.screen, winner_color, winner_rect, 15, 4, COLORS['text_white'])
-        
-        # Texto del ganador
-        winner_text = self.font_large.render(f"{winner_name} PRESIONO PRIMERO!", True, COLORS['background'])
-        winner_text_rect = winner_text.get_rect(center=winner_rect.center)
-        self.screen.blit(winner_text, winner_text_rect)
-        
-        # ========== OPCIONES (visibles) ==========
-        self.draw_answer_options_preview()
-        
-        # ========== ROBOT CELEBRANDO ==========
-        robot_x = SCREEN_WIDTH // 2
-        robot_y = 600
-        bounce = abs(math.sin(self.animation_time * 0.2)) * 20
-        self.draw_robot(robot_x, int(robot_y - bounce), 60, winner_color, 0)
-        
-        # ========== MENSAJE ==========
-        prep_text = self.font_medium.render("Preparate para responder...", True, COLORS['text_gray'])
-        prep_rect = prep_text.get_rect(center=(SCREEN_WIDTH // 2, 660))
-        self.screen.blit(prep_text, prep_rect)
-    
-    def draw_answering_phase(self):
-        """
-        Dibuja la fase de respuesta donde el ganador del buzzer contesta.
-        
-        Muestra:
-        - Temporizador de 10 segundos
-        - Indicador de quien responde
-        - Pregunta y opciones de respuesta
-        - Opcion de skip
-        
-        Returns:
-            None
-        """
-        # ========== QUIEN RESPONDE ==========
-        responder_color = COLORS['player1'] if self.buzzer_winner == 1 else COLORS['player2']
-        responder_name = "JUGADOR 1" if self.buzzer_winner == 1 else "JUGADOR 2"
-        skip_key = "Q" if self.buzzer_winner == 1 else "P"
-        
-        resp_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, 230, 300, 40)
-        self.draw_rounded_rect(self.screen, responder_color, resp_rect, 10)
-        resp_text = self.font_medium.render(f"{responder_name} RESPONDE", True, COLORS['background'])
-        resp_text_rect = resp_text.get_rect(center=resp_rect.center)
-        self.screen.blit(resp_text, resp_text_rect)
-        
-        # ========== TEMPORIZADOR ==========
-        time_percent = self.answer_time_remaining / ANSWER_TIME_LIMIT
-        is_low_time = self.answer_time_remaining <= 3
-        
-        timer_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, 280, 200, 25)
-        timer_fg_width = int(200 * time_percent)
-        timer_fg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, 280, timer_fg_width, 25)
-        
-        self.draw_rounded_rect(self.screen, COLORS['border'], timer_bg_rect, 8)
-        
-        timer_color = COLORS['error'] if is_low_time else COLORS['success']
-        if time_percent > 0:
-            self.draw_rounded_rect(self.screen, timer_color, timer_fg_rect, 8)
-        
-        time_str = f"{self.answer_time_remaining}s"
-        time_color = COLORS['error'] if is_low_time else COLORS['text_white']
-        time_text = self.font_small.render(time_str, True, time_color)
-        time_rect = time_text.get_rect(center=timer_bg_rect.center)
-        self.screen.blit(time_text, time_rect)
+            bar_color = COLORS['error'] if is_low_time else COLORS['question']
+            self.draw_rounded_rect(self.screen, bar_color, timer_fg_rect, 6)
         
         # ========== PREGUNTA ==========
         self.draw_question_panel(320)
         
         # ========== OPCIONES DE RESPUESTA ==========
-        self.draw_answer_options(self.buzzer_winner)
+        self.draw_answer_options_dual()
         
-        # ========== SKIP BUTTON ==========
-        skip_rect = pygame.Rect(SCREEN_WIDTH // 2 - 80, 560, 160, 40)
-        self.draw_rounded_rect(self.screen, COLORS['card_hover'], skip_rect, 10, 2, COLORS['text_gray'])
-        skip_text = self.font_small.render(f"SKIP ({skip_key})", True, COLORS['text_gray'])
-        skip_text_rect = skip_text.get_rect(center=skip_rect.center)
-        self.screen.blit(skip_text, skip_text_rect)
+        # ========== ESTADO DE JUGADORES ==========
+        self.draw_player_status()
     
     def draw_result_phase(self):
         """
-        Dibuja la fase de resultado despues de responder.
+        Dibuja la fase de resultado despues de responder o timeout.
         
         Muestra:
-        - Si la respuesta fue correcta, incorrecta o saltada
-        - La respuesta correcta si fue incorrecta
+        - Si alguien acerto, quien gano el punto
+        - Si ambos fallaron o hubo timeout
+        - La respuesta correcta
         - Mensaje de siguiente pregunta
         
         Returns:
             None
         """
         # ========== RESULTADO ==========
-        if self.last_answer_skipped:
+        if self.round_winner is not None:
+            # Alguien gano
+            winner_color = COLORS['player1'] if self.round_winner == 1 else COLORS['player2']
+            winner_name = "JUGADOR 1" if self.round_winner == 1 else "JUGADOR 2"
+            result_text = f"{winner_name} GANA EL PUNTO!"
+            result_color = winner_color
+        elif self.last_answer_correct is None:
+            # Timeout
+            result_text = "TIEMPO AGOTADO!"
             result_color = COLORS['accent']
-            result_text = "PREGUNTA SALTADA"
-        elif self.last_answer_correct:
-            result_color = COLORS['success']
-            result_text = "CORRECTO!"
         else:
+            # Ambos fallaron
+            result_text = "NADIE ACERTO"
             result_color = COLORS['error']
-            result_text = "INCORRECTO"
         
         # Panel de resultado
-        result_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, 240, 400, 80)
+        result_rect = pygame.Rect(SCREEN_WIDTH // 2 - 220, 240, 440, 80)
         self.draw_rounded_rect(self.screen, result_color, result_rect, 15, 4, COLORS['text_white'])
         
         result_label = self.font_large.render(result_text, True, COLORS['text_white'])
@@ -1810,9 +1641,17 @@ class RobotRaceGame:
             correct_rect = correct_text.get_rect(center=(SCREEN_WIDTH // 2, 540))
             self.screen.blit(correct_text, correct_rect)
         
+        # ========== ROBOT CELEBRANDO (si hay ganador) ==========
+        if self.round_winner is not None:
+            winner_color = COLORS['player1'] if self.round_winner == 1 else COLORS['player2']
+            robot_x = SCREEN_WIDTH // 2
+            robot_y = 620
+            bounce = abs(math.sin(self.animation_time * 0.2)) * 15
+            self.draw_robot(robot_x, int(robot_y - bounce), 50, winner_color, 0)
+        
         # ========== MENSAJE SIGUIENTE ==========
         next_text = self.font_small.render("Siguiente pregunta en unos segundos...", True, COLORS['text_gray'])
-        next_rect = next_text.get_rect(center=(SCREEN_WIDTH // 2, 600))
+        next_rect = next_text.get_rect(center=(SCREEN_WIDTH // 2, 680))
         self.screen.blit(next_text, next_rect)
     
     def draw_question_panel(self, y_pos: int):
@@ -1858,10 +1697,14 @@ class RobotRaceGame:
                 q_rect = q_text.get_rect(center=(SCREEN_WIDTH // 2, y_pos + 60))
                 self.screen.blit(q_text, q_rect)
     
-    def draw_answer_options_preview(self):
+    def draw_answer_options_dual(self):
         """
-        Dibuja las opciones de respuesta en modo preview (sin teclas).
-        Se usa durante la fase de lectura y buzzer.
+        Dibuja las opciones de respuesta mostrando teclas de ambos jugadores.
+        
+        Muestra:
+        - Las 3 opciones de respuesta
+        - Teclas de J1 (A, S, D) y J2 (J, K, L) en cada opcion
+        - Estado bloqueado si aplica
         
         Returns:
             None
@@ -1870,74 +1713,89 @@ class RobotRaceGame:
             return
         
         # Configuracion
-        option_width = 300
-        option_height = 45
-        option_gap = 15
+        option_width = 320
+        option_height = 70
+        option_gap = 20
         total_width = option_width * 3 + option_gap * 2
         start_x = (SCREEN_WIDTH - total_width) // 2
-        option_y = 450
+        option_y = 440
+        
+        # Teclas de cada jugador
+        keys_p1 = ["A", "S", "D"]
+        keys_p2 = ["J", "K", "L"]
         
         for i, option in enumerate(self.current_options):
             opt_x = start_x + i * (option_width + option_gap)
             opt_rect = pygame.Rect(opt_x, option_y, option_width, option_height)
             
             # Dibujar opcion
-            self.draw_rounded_rect(self.screen, COLORS['card'], opt_rect, 10, 2, COLORS['border'])
+            self.draw_rounded_rect(self.screen, COLORS['card'], opt_rect, 12, 2, COLORS['border'])
             
             # Numero de opcion
-            num_text = self.font_small.render(f"{i+1}.", True, COLORS['accent'])
-            self.screen.blit(num_text, (opt_rect.x + 15, opt_rect.centery - 10))
+            num_text = self.font_medium.render(f"{i+1}.", True, COLORS['accent'])
+            self.screen.blit(num_text, (opt_rect.x + 15, opt_rect.y + 10))
             
             # Texto de la opcion (truncar si es muy largo)
-            opt_text_str = str(option)[:25] + "..." if len(str(option)) > 25 else str(option)
-            opt_text = self.font_small.render(opt_text_str, True, COLORS['text_white'])
-            opt_text_rect = opt_text.get_rect(left=opt_rect.x + 45, centery=opt_rect.centery)
+            opt_text_str = str(option)[:20] + "..." if len(str(option)) > 20 else str(option)
+            opt_text = self.font_medium.render(opt_text_str, True, COLORS['text_white'])
+            opt_text_rect = opt_text.get_rect(centerx=opt_rect.centerx, top=opt_rect.y + 10)
             self.screen.blit(opt_text, opt_text_rect)
+            
+            # ========== TECLAS DE AMBOS JUGADORES ==========
+            key_y = opt_rect.bottom - 25
+            
+            # Tecla J1 (izquierda)
+            key_rect_p1 = pygame.Rect(opt_rect.x + 20, key_y, 35, 22)
+            p1_color = COLORS['track_segment'] if self.player1.blocked_this_round else COLORS['player1']
+            self.draw_rounded_rect(self.screen, p1_color, key_rect_p1, 6)
+            key_text_p1 = self.font_small.render(keys_p1[i], True, COLORS['background'])
+            key_text_rect_p1 = key_text_p1.get_rect(center=key_rect_p1.center)
+            self.screen.blit(key_text_p1, key_text_rect_p1)
+            
+            # Tecla J2 (derecha)
+            key_rect_p2 = pygame.Rect(opt_rect.right - 55, key_y, 35, 22)
+            p2_color = COLORS['track_segment'] if self.player2.blocked_this_round else COLORS['player2']
+            self.draw_rounded_rect(self.screen, p2_color, key_rect_p2, 6)
+            key_text_p2 = self.font_small.render(keys_p2[i], True, COLORS['background'])
+            key_text_rect_p2 = key_text_p2.get_rect(center=key_rect_p2.center)
+            self.screen.blit(key_text_p2, key_text_rect_p2)
     
-    def draw_answer_options(self, player: int):
+    def draw_player_status(self):
         """
-        Dibuja las opciones de respuesta para el jugador que responde.
-        
-        Args:
-            player (int): Numero del jugador que puede responder (1 o 2)
+        Dibuja el estado actual de cada jugador (puede responder o bloqueado).
         
         Returns:
             None
         """
-        if not self.current_options:
-            return
+        status_y = 530
         
-        # Configuracion
-        option_width = 300
-        option_height = 50
-        option_gap = 15
-        total_width = option_width * 3 + option_gap * 2
-        start_x = (SCREEN_WIDTH - total_width) // 2
-        option_y = 450
+        # ========== JUGADOR 1 ==========
+        p1_rect = pygame.Rect(100, status_y, 200, 40)
+        if self.player1.blocked_this_round:
+            p1_color = COLORS['error']
+            p1_text = "J1: BLOQUEADO"
+        else:
+            p1_color = COLORS['player1']
+            p1_text = "J1: Puede responder"
         
-        # Teclas segun jugador
-        keys = ["A", "S", "D"] if player == 1 else ["J", "K", "L"]
-        player_color = COLORS['player1'] if player == 1 else COLORS['player2']
+        self.draw_rounded_rect(self.screen, p1_color, p1_rect, 10, 2, COLORS['text_white'])
+        p1_label = self.font_small.render(p1_text, True, COLORS['text_white'])
+        p1_label_rect = p1_label.get_rect(center=p1_rect.center)
+        self.screen.blit(p1_label, p1_label_rect)
         
-        for i, option in enumerate(self.current_options):
-            opt_x = start_x + i * (option_width + option_gap)
-            opt_rect = pygame.Rect(opt_x, option_y, option_width, option_height)
-            
-            # Dibujar opcion
-            self.draw_rounded_rect(self.screen, COLORS['card'], opt_rect, 10, 2, player_color)
-            
-            # Texto de la opcion (truncar si es muy largo)
-            opt_text_str = str(option)[:25] + "..." if len(str(option)) > 25 else str(option)
-            opt_text = self.font_small.render(opt_text_str, True, COLORS['text_white'])
-            opt_text_rect = opt_text.get_rect(center=(opt_rect.centerx, opt_rect.centery - 5))
-            self.screen.blit(opt_text, opt_text_rect)
-            
-            # Tecla
-            key_rect = pygame.Rect(opt_rect.centerx - 15, opt_rect.bottom - 25, 30, 25)
-            self.draw_rounded_rect(self.screen, player_color, key_rect, 6)
-            key_text = self.font_small.render(keys[i], True, COLORS['background'])
-            key_text_rect = key_text.get_rect(center=key_rect.center)
-            self.screen.blit(key_text, key_text_rect)
+        # ========== JUGADOR 2 ==========
+        p2_rect = pygame.Rect(SCREEN_WIDTH - 300, status_y, 200, 40)
+        if self.player2.blocked_this_round:
+            p2_color = COLORS['error']
+            p2_text = "J2: BLOQUEADO"
+        else:
+            p2_color = COLORS['player2']
+            p2_text = "J2: Puede responder"
+        
+        self.draw_rounded_rect(self.screen, p2_color, p2_rect, 10, 2, COLORS['text_white'])
+        p2_label = self.font_small.render(p2_text, True, COLORS['text_white'])
+        p2_label_rect = p2_label.get_rect(center=p2_rect.center)
+        self.screen.blit(p2_label, p2_label_rect)
     
     # ==========================================================================
     #                     PANTALLA DE FIN DE JUEGO
@@ -2012,7 +1870,7 @@ class RobotRaceGame:
         p2_bg = COLORS['player2'] if self.winner == 2 else COLORS['card_hover']
         self.draw_rounded_rect(self.screen, p2_bg, score_rect_2, 12, 2, COLORS['player2'])
         
-        p2_label = self.font_small.render("Jugador 2", True, COLORS['text_white'])
+        p2_label = self.font_small.render("Jugador 2", True, COLORS['text_white'])        
         p2_label_rect = p2_label.get_rect(centerx=score_rect_2.centerx, top=score_rect_2.y + 10)
         self.screen.blit(p2_label, p2_label_rect)
         
@@ -2035,7 +1893,7 @@ class RobotRaceGame:
         
         Llama a la funcion de dibujo apropiada segun el estado del juego:
         - MENU: Dibuja el menu de seleccion de nivel
-        - READING/BUZZER/BUZZER_PAUSE/ANSWERING/RESULT_PAUSE: Dibuja la pantalla de juego
+        - COUNTDOWN/QUESTION/RESULT_PAUSE: Dibuja la pantalla de juego
         - FINISHED: Dibuja la pantalla de juego con overlay de fin
         
         Returns:
@@ -2073,13 +1931,14 @@ class RobotRaceGame:
             None
         """
         print("\n" + "="*60)
-        print("            ROBOT RACE QUIZ v5.0")
-        print("       Lectura (15s) + Buzzer + Respuesta (10s)")
+        print("            ROBOT RACE QUIZ v6.0")
+        print("       Interludio 3,2,1 + 30 segundos para responder")
         print("="*60)
         print("\nControles:")
-        print("  LECTURA: Solo lee, no puedes presionar")
-        print("  BUZZER: J1 (A/S/D) | J2 (J/K/L)")
-        print("  RESPUESTA: Mismas teclas + SKIP (J1: Q, J2: P)")
+        print("  INTERLUDIO: Cuenta regresiva 3, 2, 1...")
+        print("  PREGUNTA: J1 (A/S/D) | J2 (J/K/L) - 30 segundos")
+        print("  El primero en responder CORRECTAMENTE gana!")
+        print("  Si respondes MAL quedas bloqueado esa ronda")
         print("  MENU: 1, 2, 3 para nivel | ESC para salir")
         print("="*60 + "\n")
         
