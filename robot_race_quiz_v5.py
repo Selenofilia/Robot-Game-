@@ -6,7 +6,7 @@
 ================================================================================
 
 DESCRIPCION:
-    Este programa implementa un juego educativo de carreras de robots donde 
+    Este programa implementa un juego educativo de carreras de robotsssssssssssssssssss donde 
     dos jugadores compiten respondiendo preguntas. Incluye un interludio de
     cuenta regresiva "3, 2, 1" antes de cada pregunta, seguido de 30 segundos
     donde ambos jugadores pueden intentar responder. El primero en responder
@@ -853,7 +853,7 @@ class RobotRaceGame:
         self.round_winner = None
         self.last_answer_correct = None  # None indica timeout
         
-        # Mensajes para ambos jugadores
+        # Mensajes para ambos jugadoresggg
         self.player1.message = "Tiempo agotado!"
         self.player1.message_type = "warning"
         self.player2.message = "Tiempo agotado!"
@@ -1017,11 +1017,11 @@ class RobotRaceGame:
                 
                 # 2. Teclas solo en el MENU
                 if self.phase == GamePhase.MENU:
-                    if event.key == pygame.K_1:
+                    if event.key == pygame.K_a or event.key == pygame.K_d:
                         self.start_game(1)
-                    elif event.key == pygame.K_2:
+                    elif event.key == pygame.K_s or event.key == pygame.K_f:
                         self.start_game(2)
-                    elif event.key == pygame.K_3:
+                    elif event.key == pygame.K_w or event.key == pygame.K_g:
                         self.start_game(3)
                 
                 # 3. Teclas solo durante la PREGUNTA
@@ -1029,12 +1029,12 @@ class RobotRaceGame:
                     # Controles Jugador 1
                     if event.key == pygame.K_a: self.answer_question(1, 0)
                     elif event.key == pygame.K_s: self.answer_question(1, 1)
-                    elif event.key == pygame.K_d: self.answer_question(1, 2)
+                    elif event.key == pygame.K_w: self.answer_question(1, 2)
                     
                     # Controles Jugador 2
-                    elif event.key == pygame.K_j: self.answer_question(2, 0)
-                    elif event.key == pygame.K_k: self.answer_question(2, 1)
-                    elif event.key == pygame.K_l: self.answer_question(2, 2)
+                    elif event.key == pygame.K_d: self.answer_question(2, 0)
+                    elif event.key == pygame.K_f: self.answer_question(2, 1)
+                    elif event.key == pygame.K_g: self.answer_question(2, 2)
                 
                 # 4. Teclas en FIN DE JUEGO
                 elif self.phase == GamePhase.FINISHED:
@@ -1208,48 +1208,41 @@ class RobotRaceGame:
         self.screen.blit(flow2, (SCREEN_WIDTH // 2 - 360, 218))
         self.screen.blit(flow3, (SCREEN_WIDTH // 2 - 360, 236))
         
-        # ========== CONTROLES ==========
+       # ========== CONTROLES ==========
         ctrl_rect = pygame.Rect(SCREEN_WIDTH // 2 - 380, 270, 760, 50)
         self.draw_rounded_rect(self.screen, COLORS['card'], ctrl_rect, 8, 1, COLORS['border'])
         
-        ctrl_text1 = self.font_tiny.render("J1 (Verde): A=op1, S=op2, D=op3", True, COLORS['player1'])
-        ctrl_text2 = self.font_tiny.render("J2 (Naranja): J=op1, K=op2, L=op3", True, COLORS['player2'])
+        # Textos actualizados a botones por color
+        ctrl_text1 = self.font_tiny.render("J1 (Verde): Botón Azul / Rojo / Verde", True, COLORS['player1'])
+        ctrl_text2 = self.font_tiny.render("J2 (Naranja): Botón Azul / Rojo / Verde", True, COLORS['player2'])
         self.screen.blit(ctrl_text1, (SCREEN_WIDTH // 2 - 360, 282))
         self.screen.blit(ctrl_text2, (SCREEN_WIDTH // 2 + 20, 282))
         
         # ========== BOTONES DE NIVEL ==========
         levels = [
-            ("1", "Facil", "Preguntas basicas de matematicas", COLORS['player1']),
-            ("2", "Medio", "Conocimiento general y operaciones", COLORS['accent']),
-            ("3", "Dificil", "Matematicas avanzadas", COLORS['player2']),
+            ("Azul", "Fácil", "Preguntas básicas de matemáticas", COLORS['player1']),
+            ("Rojo", "Medio", "Conocimiento general y operaciones", COLORS['accent']),
+            ("Verde", "Difícil", "Matemáticas avanzadas", COLORS['player2']),
         ]
         
         y_start = 340
-        for i, (num, name, desc, color) in enumerate(levels):
+        for i, (btn_name, name, desc, color) in enumerate(levels):
             btn_rect = pygame.Rect(SCREEN_WIDTH // 2 - 220, y_start + i * 95, 440, 80)
             
             # Detectar hover del mouse
             mouse_pos = pygame.mouse.get_pos()
             is_hover = btn_rect.collidepoint(mouse_pos)
             
-            # Colores segun estado hover
             bg_color = color if is_hover else COLORS['card']
             text_color = COLORS['background'] if is_hover else COLORS['text_white']
-            desc_color = COLORS['background'] if is_hover else COLORS['text_gray']
             
-            # Dibujar boton
             self.draw_rounded_rect(self.screen, bg_color, btn_rect, 12, 2, color)
             
-            # Texto del nivel
-            level_text = self.font_medium.render(f"Nivel {num}: {name}", True, text_color)
+            level_text = self.font_medium.render(f"Nivel {i+1}: {name}", True, text_color)
             self.screen.blit(level_text, (btn_rect.x + 20, btn_rect.y + 15))
             
-            # Descripcion
-            desc_text = self.font_tiny.render(desc, True, desc_color)
-            self.screen.blit(desc_text, (btn_rect.x + 20, btn_rect.y + 48))
-            
-            # Indicador de tecla
-            key_text = self.font_small.render(f"Presiona {num}", True, text_color)
+            # Texto indicando el botón de color
+            key_text = self.font_small.render(f"Presiona Botón {btn_name}", True, text_color)
             key_rect = key_text.get_rect(right=btn_rect.right - 20, centery=btn_rect.centery)
             self.screen.blit(key_text, key_rect)
         
@@ -1472,9 +1465,9 @@ class RobotRaceGame:
         self.draw_rounded_rect(self.screen, COLORS['card'], footer_rect, 8, 1, COLORS['border'])
         
         if self.phase == GamePhase.COUNTDOWN:
-            text = "PREPARATE - La pregunta aparecera en unos segundos..."
+            text = "¡PREPÁRATE! La carrera comienza pronto..."
         elif self.phase == GamePhase.QUESTION:
-            text = "J1: A/S/D  |  J2: J/K/L  |  El primero en responder correctamente gana!"
+            text = "Usa los botones AZUL, ROJO o VERDE para responder rápido"
         else:
             text = "Esperando..."
         
@@ -1692,67 +1685,57 @@ class RobotRaceGame:
     
     def draw_answer_options_dual(self):
         """
-        Dibuja las opciones de respuesta mostrando teclas de ambos jugadores.
-        
-        Muestra:
-        - Las 3 opciones de respuesta
-        - Teclas de J1 (A, S, D) y J2 (J, K, L) en cada opcion
-        - Estado bloqueado si aplica
-        
-        Returns:
-            None
+        Dibuja las opciones de respuesta con una etiqueta de color central
+        válida para ambos jugadores.
         """
         if not self.current_options:
             return
         
-        # Configuracion
+        # Configuración de dimensiones
         option_width = 320
-        option_height = 70
+        option_height = 80  # Aumentamos un poco la altura para mejor visualización
         option_gap = 20
         total_width = option_width * 3 + option_gap * 2
         start_x = (SCREEN_WIDTH - total_width) // 2
         option_y = 440
         
-        # Teclas de cada jugador
-        keys_p1 = ["A", "S", "D"]
-        keys_p2 = ["J", "K", "L"]
+        # Configuración de colores y nombres de botones
+        color_names = ["AZUL", "ROJO", "VERDE"]
+        # Asignamos los colores de la paleta: Azul (question), Rojo (error), Verde (success)
+        button_colors = [COLORS['question'], COLORS['error'], COLORS['success']]
         
         for i, option in enumerate(self.current_options):
             opt_x = start_x + i * (option_width + option_gap)
             opt_rect = pygame.Rect(opt_x, option_y, option_width, option_height)
             
-            # Dibujar opcion
+            # 1. Dibujar el recuadro de la opción
             self.draw_rounded_rect(self.screen, COLORS['card'], opt_rect, 12, 2, COLORS['border'])
             
-            # Numero de opcion
-            num_text = self.font_medium.render(f"{i+1}.", True, COLORS['accent'])
-            self.screen.blit(num_text, (opt_rect.x + 15, opt_rect.y + 10))
-            
-            # Texto de la opcion (truncar si es muy largo)
-            opt_text_str = str(option)[:20] + "..." if len(str(option)) > 20 else str(option)
+            # 2. Dibujar el texto de la respuesta (centrado arriba)
+            opt_text_str = str(option)[:25] + "..." if len(str(option)) > 25 else str(option)
             opt_text = self.font_medium.render(opt_text_str, True, COLORS['text_white'])
-            opt_text_rect = opt_text.get_rect(centerx=opt_rect.centerx, top=opt_rect.y + 10)
+            opt_text_rect = opt_text.get_rect(centerx=opt_rect.centerx, top=opt_rect.y + 12)
             self.screen.blit(opt_text, opt_text_rect)
             
-            # ========== TECLAS DE AMBOS JUGADORES ==========
-            key_y = opt_rect.bottom - 25
+            # 3. Dibujar la ETIQUETA ÚNICA DE COLOR (abajo al centro)
+            # Creamos un pequeño badge de color
+            badge_rect = pygame.Rect(0, 0, 140, 24)
+            badge_rect.centerx = opt_rect.centerx
+            badge_rect.bottom = opt_rect.bottom - 10
             
-            # Tecla J1 (izquierda)
-            key_rect_p1 = pygame.Rect(opt_rect.x + 20, key_y, 35, 22)
-            p1_color = COLORS['track_segment'] if self.player1.blocked_this_round else COLORS['player1']
-            self.draw_rounded_rect(self.screen, p1_color, key_rect_p1, 6)
-            key_text_p1 = self.font_small.render(keys_p1[i], True, COLORS['background'])
-            key_text_rect_p1 = key_text_p1.get_rect(center=key_rect_p1.center)
-            self.screen.blit(key_text_p1, key_text_rect_p1)
+            # Si ambos jugadores están bloqueados, el badge se ve gris, si no, del color del botón
+            if self.player1.blocked_this_round and self.player2.blocked_this_round:
+                current_badge_color = COLORS['track_segment']
+            else:
+                current_badge_color = button_colors[i]
+                
+            self.draw_rounded_rect(self.screen, current_badge_color, badge_rect, 6)
             
-            # Tecla J2 (derecha)
-            key_rect_p2 = pygame.Rect(opt_rect.right - 55, key_y, 35, 22)
-            p2_color = COLORS['track_segment'] if self.player2.blocked_this_round else COLORS['player2']
-            self.draw_rounded_rect(self.screen, p2_color, key_rect_p2, 6)
-            key_text_p2 = self.font_small.render(keys_p2[i], True, COLORS['background'])
-            key_text_rect_p2 = key_text_p2.get_rect(center=key_rect_p2.center)
-            self.screen.blit(key_text_p2, key_text_rect_p2)
-    
+            # Texto dentro del badge
+            color_label = self.font_tiny.render(f"BOTÓN {color_names[i]}", True, COLORS['background'])
+            color_label_rect = color_label.get_rect(center=badge_rect.center)
+            self.screen.blit(color_label, color_label_rect)
+
     def draw_player_status(self):
         """
         Dibuja el estado actual de cada jugador (puede responder o bloqueado).
