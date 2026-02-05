@@ -988,66 +988,44 @@ class RobotRaceGame:
     # ==========================================================================
     
     def handle_events(self):
-        """
-        Procesa todos los eventos de entrada del usuario.
-        
-        Maneja:
-        - Evento de cierre de ventana
-        - Teclas del menu (1, 2, 3 para seleccionar nivel)
-        - Teclas de respuesta durante fase QUESTION
-        - Tecla ESC para volver al menu
-        - Tecla ESPACIO para reiniciar
-        
-        Returns:
-            bool: True para continuar el juego, False para salir
-        """
         for event in pygame.event.get():
-            # ========== CIERRE DE VENTANA ==========
+            # Cierre con la "X" de la ventana
             if event.type == pygame.QUIT:
                 return False
             
-            # ========== EVENTOS DE TECLADO ==========
             if event.type == pygame.KEYDOWN:
                 
-                # ---------- MENU ----------
+                # 1. Gestión de la tecla ESC (Dual)
+                if event.key == pygame.K_ESCAPE:
+                    if self.phase == GamePhase.MENU:
+                        return False  # Cierra el juego
+                    else:
+                        self.reset_game() # Vuelve al menú
+                
+                # 2. Teclas solo en el MENU
                 if self.phase == GamePhase.MENU:
                     if event.key == pygame.K_1:
-                        self.start_game(1)  # Nivel facil
+                        self.start_game(1)
                     elif event.key == pygame.K_2:
-                        self.start_game(2)  # Nivel medio
+                        self.start_game(2)
                     elif event.key == pygame.K_3:
-                        self.start_game(3)  # Nivel dificil
+                        self.start_game(3)
                 
-                # ---------- FASE CUENTA REGRESIVA ----------
-                # Durante la cuenta regresiva no se puede hacer nada
-                
-                # ---------- FASE PREGUNTA ----------
+                # 3. Teclas solo durante la PREGUNTA
                 elif self.phase == GamePhase.QUESTION:
-                    # Jugador 1: A, S, D para opciones
-                    if event.key == pygame.K_a:
-                        self.answer_question(1, 0)
-                    elif event.key == pygame.K_s:
-                        self.answer_question(1, 1)
-                    elif event.key == pygame.K_d:
-                        self.answer_question(1, 2)
+                    # Controles Jugador 1
+                    if event.key == pygame.K_a: self.answer_question(1, 0)
+                    elif event.key == pygame.K_s: self.answer_question(1, 1)
+                    elif event.key == pygame.K_d: self.answer_question(1, 2)
                     
-                    # Jugador 2: J, K, L para opciones
-                    elif event.key == pygame.K_j:
-                        self.answer_question(2, 0)
-                    elif event.key == pygame.K_k:
-                        self.answer_question(2, 1)
-                    elif event.key == pygame.K_l:
-                        self.answer_question(2, 2)
+                    # Controles Jugador 2
+                    elif event.key == pygame.K_j: self.answer_question(2, 0)
+                    elif event.key == pygame.K_k: self.answer_question(2, 1)
+                    elif event.key == pygame.K_l: self.answer_question(2, 2)
                 
-                # ---------- ESC PARA SALIR ----------
-                if self.phase in [GamePhase.COUNTDOWN, GamePhase.QUESTION, GamePhase.RESULT_PAUSE]:
-                    if event.key == pygame.K_ESCAPE:
-                        self.reset_game()
-                
-                # ---------- FIN DE JUEGO ----------
+                # 4. Teclas en FIN DE JUEGO
                 elif self.phase == GamePhase.FINISHED:
-                    # ESPACIO: Jugar de nuevo
-                    if event.key == pygame.K_SPACE:
+                    if event.key == pygame.K_space:
                         self.reset_game()
         
         return True
