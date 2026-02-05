@@ -1038,8 +1038,10 @@ class RobotRaceGame:
                 
                 # 4. Teclas en FIN DE JUEGO
                 elif self.phase == GamePhase.FINISHED:
-                    if event.key == pygame.K_space:
-                        self.reset_game()
+                    # ESPACIO: Jugar de nuevo / Volver al menú
+                    if event.key == pygame.K_SPACE:
+                        print("[JUEGO] Reiniciando al menú...")
+                        self.reset_game()  # Esto cambia la fase a MENU y limpia puntos
         
         return True
     
@@ -1166,7 +1168,7 @@ class RobotRaceGame:
         
         # ========== SUBTITULO ==========
         subtitle = self.font_small.render(
-            "Interludio 3,2,1 + 30 segundos para responder", 
+            "Desarrollado por Octavo Semestre Matemáticas Computacional", 
             True, COLORS['accent']
         )
         subtitle_rect = subtitle.get_rect(center=(SCREEN_WIDTH // 2, 120))
@@ -1191,7 +1193,7 @@ class RobotRaceGame:
         
         # Explicacion del flujo
         flow1 = self.font_tiny.render(
-            "1. INTERLUDIO: Cuenta regresiva animada 3, 2, 1...", 
+            "1. INTERLUDIO: Cuenta regresiva 3, 2, 1...", 
             True, COLORS['text_gray']
         )
         flow2 = self.font_tiny.render(
@@ -1296,7 +1298,7 @@ class RobotRaceGame:
         track_height = 40                         # Alto de cada carril
         segment_count = self.TOTAL_SEGMENTS       # Numero de segmentos
         segment_gap = 3                           # Espacio entre segmentos
-        
+         
         # Posiciones Y de los carriles
         track_y_1 = 115  # Carril del jugador 1
         track_y_2 = 175  # Carril del jugador 2
