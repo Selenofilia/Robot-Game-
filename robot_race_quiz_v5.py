@@ -77,7 +77,7 @@ from enum import Enum                     # Enumeraciones para estados del juego
 # Intentar importar requests para cargar imagenes desde URL
 # Si no esta disponible, se usara un fallback
 try:
-    import requests
+    #import requests
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -986,8 +986,21 @@ class RobotRaceGame:
     # ==========================================================================
     #                       MANEJO DE EVENTOS
     # ==========================================================================
-    
+  
     def handle_events(self):
+        """
+        Procesa todos los eventos de entrada del usuario.
+        
+        Maneja:
+        - Evento de cierre de ventana
+        - Teclas del menu (1, 2, 3 para seleccionar nivel)
+        - Teclas de respuesta durante fase QUESTION
+        - Tecla ESC para volver al menu
+        - Tecla ESPACIO para reiniciar
+        
+        Returns:
+            bool: True para continuar el juego, False para salir
+        """
         for event in pygame.event.get():
             # Cierre con la "X" de la ventana
             if event.type == pygame.QUIT:
